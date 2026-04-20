@@ -15,6 +15,8 @@ npm install
 npm run dev
 ```
 
+From the project root you can start the full stack (backend + this UI) with `../scripts/dev-local.sh` after `npm install` here once.
+
 Open the URL printed by Vite (typically `http://localhost:5173`).
 
 ## Environment

@@ -1,6 +1,20 @@
-import type { AnalyticsSummary, Complaint, TokenResponse, User } from "./types";
+import type {
+  AdminUserRow,
+  AnalyticsSummary,
+  Complaint,
+  TokenResponse,
+  User,
+} from "./types";
 
 const base = () => import.meta.env.VITE_API_URL ?? "";
+
+export function getApiBase(): string {
+  return base();
+}
+
+export function attachmentFileUrl(publicId: string, index: number): string {
+  return `${getApiBase()}/complaints/${encodeURIComponent(publicId)}/attachments/${index}/file`;
+}
 
 export function getToken(): string | null {
   return sessionStorage.getItem("token");
@@ -15,14 +29,33 @@ export function clearToken(): void {
 }
 
 async function parseError(r: Response): Promise<Error> {
-  let msg = "Request failed";
+  const fallback = "Request failed";
   try {
     const t = await r.text();
-    if (t) msg = t.slice(0, 200);
+    if (!t) {
+      return new Error(fallback);
+    }
+    const ct = r.headers.get("content-type") ?? "";
+    if (ct.includes("application/json") || t.trimStart().startsWith("{")) {
+      try {
+        const j = JSON.parse(t) as { detail?: unknown };
+        if (typeof j.detail === "string") {
+          return new Error(j.detail.slice(0, 200));
+        }
+        if (Array.isArray(j.detail) && j.detail.length > 0) {
+          const first = j.detail[0] as { msg?: string };
+          if (typeof first.msg === "string") {
+            return new Error(first.msg.slice(0, 200));
+          }
+        }
+      } catch {
+        /* fall through to raw body */
+      }
+    }
+    return new Error(t.slice(0, 200));
   } catch {
-    /* ignore */
+    return new Error(fallback);
   }
-  return new Error(msg);
 }
 
 export async function apiJson<T>(
@@ -57,23 +90,55 @@ export async function login(
   });
 }
 
-export async function register(
-  email: string,
-  password: string,
-  full_name: string,
-): Promise<TokenResponse> {
-  return apiJson<TokenResponse>("/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ email, password, full_name }),
-  });
-}
-
 export async function fetchMe(): Promise<User> {
   return apiJson<User>("/auth/me");
 }
 
 export async function fetchMaintenanceStaff(): Promise<User[]> {
   return apiJson<User[]>("/auth/maintenance-staff");
+}
+
+export async function fetchAdminStaffRoster(): Promise<AdminUserRow[]> {
+  return apiJson<AdminUserRow[]>("/auth/admin/staff");
+}
+
+export async function fetchAdminResidentsRoster(): Promise<AdminUserRow[]> {
+  return apiJson<AdminUserRow[]>("/auth/admin/residents");
+}
+
+export async function onboardStaffUser(body: {
+  email: string;
+  password: string;
+  full_name: string;
+  address: string;
+  phone: string;
+  aadhar: string;
+}): Promise<User> {
+  return apiJson<User>("/auth/admin/staff/onboard", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function onboardResidentUser(body: {
+  email: string;
+  password: string;
+  full_name: string;
+  phone: string;
+  aadhar: string;
+  family_members: string[];
+}): Promise<User> {
+  return apiJson<User>("/auth/admin/residents/onboard", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deactivateUserAccount(userId: string): Promise<void> {
+  await apiJson<void>(
+    `/auth/admin/users/${encodeURIComponent(userId)}/deactivate`,
+    { method: "POST" },
+  );
 }
 
 export async function fetchComplaints(
@@ -106,6 +171,23 @@ export async function patchComplaint(
     method: "PATCH",
     body: JSON.stringify(body),
   });
+}
+
+export async function deleteComplaint(publicId: string): Promise<void> {
+  const enc = encodeURIComponent(publicId);
+  const basePath = `/complaints/${enc}`;
+  const token = getToken();
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  let r = await fetch(`${base()}${basePath}`, { method: "DELETE", headers });
+  if (r.status === 405) {
+    r = await fetch(`${base()}${basePath}/delete`, { method: "POST", headers });
+  }
+  if (!r.ok) {
+    throw await parseError(r);
+  }
 }
 
 export async function fetchAnalytics(): Promise<AnalyticsSummary> {

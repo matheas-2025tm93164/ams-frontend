@@ -5,7 +5,8 @@ import { RequireRole } from "./components/RequireRole";
 import { AdminPage } from "./pages/AdminPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
+import { ManageResidentsPage } from "./pages/ManageResidentsPage";
+import { ManageStaffPage } from "./pages/ManageStaffPage";
 import { ResidentPage } from "./pages/ResidentPage";
 import { StaffPage } from "./pages/StaffPage";
 
@@ -15,7 +16,6 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<HomePage />} />
           <Route element={<AppShell />}>
             <Route
@@ -31,6 +31,22 @@ export default function App() {
               element={
                 <RequireRole role="admin">
                   <AdminPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/admin/staff"
+              element={
+                <RequireRole role="admin">
+                  <ManageStaffPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/admin/residents"
+              element={
+                <RequireRole role="admin">
+                  <ManageResidentsPage />
                 </RequireRole>
               }
             />

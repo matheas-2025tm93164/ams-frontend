@@ -7,3 +7,7 @@ export function nextStaffStatus(
   if (s === "in_progress") return "resolved";
   return null;
 }
+
+export function canStaffReopen(s: ComplaintStatus): boolean {
+  return s === "resolved";
+}

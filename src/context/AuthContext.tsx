@@ -12,7 +12,6 @@ import {
   fetchMe,
   getToken,
   login as apiLogin,
-  register as apiRegister,
   setToken,
 } from "../api/client";
 import type { User } from "../api/types";
@@ -21,11 +20,6 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    email: string,
-    password: string,
-    fullName: string,
-  ) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -65,16 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
   }, []);
 
-  const register = useCallback(
-    async (email: string, password: string, fullName: string) => {
-      const res = await apiRegister(email, password, fullName);
-      setToken(res.access_token);
-      const me = await fetchMe();
-      setUser(me);
-    },
-    [],
-  );
-
   const logout = useCallback(() => {
     clearToken();
     setUser(null);
@@ -85,11 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login,
-      register,
       logout,
       refresh,
     }),
-    [user, loading, login, register, logout, refresh],
+    [user, loading, login, logout, refresh],
   );
 
   return (
