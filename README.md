@@ -30,6 +30,7 @@ Open the URL printed by Vite (typically `http://localhost:5173`).
 | `npm run dev` | Development server    |
 | `npm run build` | Production build    |
 | `npm run preview` | Preview production build |
+| `npm run test` | Vitest unit tests |
 
 ## Component map
 

@@ -1,12 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { fetchComplaints, patchComplaint } from "../api/client";
 import type { Complaint, ComplaintStatus } from "../api/types";
-
-const nextStatus = (s: ComplaintStatus): ComplaintStatus | null => {
-  if (s === "pending") return "in_progress";
-  if (s === "in_progress") return "resolved";
-  return null;
-};
+import { nextStaffStatus } from "../domain/complaintWorkflow";
 
 export function StaffPage() {
   const [rows, setRows] = useState<Complaint[]>([]);
@@ -28,7 +23,7 @@ export function StaffPage() {
 
   async function advance(e: FormEvent, publicId: string, current: ComplaintStatus) {
     e.preventDefault();
-    const n = nextStatus(current);
+    const n = nextStaffStatus(current);
     if (!n) return;
     setErr(null);
     try {
@@ -55,7 +50,7 @@ export function StaffPage() {
         </thead>
         <tbody>
           {rows.map((c) => {
-            const n = nextStatus(c.status);
+            const n = nextStaffStatus(c.status);
             return (
               <tr key={c.public_id}>
                 <td>{c.public_id}</td>
