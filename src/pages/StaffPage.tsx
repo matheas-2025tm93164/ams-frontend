@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchComplaints, patchComplaint } from "../api/client";
 import type { Complaint, ComplaintStatus } from "../api/types";
 import { AuthenticatedImage } from "../components/AuthenticatedImage";
@@ -16,6 +16,8 @@ export function StaffPage() {
     index: number;
     label: string;
   } | null>(null);
+  const lightboxCloseRef = useRef<HTMLButtonElement>(null);
+  const lightboxTriggerRef = useRef<HTMLElement | null>(null);
 
   async function load() {
     setErr(null);
@@ -32,11 +34,18 @@ export function StaffPage() {
   }, []);
 
   useEffect(() => {
-    if (!spotlight) return;
+    if (!spotlight) {
+      if (lightboxTriggerRef.current) {
+        lightboxTriggerRef.current.focus();
+        lightboxTriggerRef.current = null;
+      }
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setSpotlight(null);
     };
     window.addEventListener("keydown", onKey);
+    requestAnimationFrame(() => lightboxCloseRef.current?.focus());
     return () => window.removeEventListener("keydown", onKey);
   }, [spotlight]);
 
@@ -75,7 +84,8 @@ export function StaffPage() {
         </div>
       )}
 
-      <div className="card">
+      <section className="card" aria-labelledby="staff-table-heading">
+        <h2 id="staff-table-heading" className="card-title">Assigned complaints</h2>
         <div className="table-scroll" role="region" aria-label="Assigned complaints" tabIndex={0}>
           <table className="data-table">
             <thead>
@@ -97,12 +107,14 @@ export function StaffPage() {
                 if (n) {
                   staffMenuItems.push({
                     label: `Set ${n.replace("_", " ")}`,
+                    icon: "arrow_forward",
                     onSelect: () => advanceStatus(c.public_id, c.status),
                   });
                 }
                 if (showReopen) {
                   staffMenuItems.push({
                     label: "Reopen",
+                    icon: "refresh",
                     onSelect: () => reopen(c.public_id),
                   });
                 }
@@ -134,13 +146,14 @@ export function StaffPage() {
                                 publicId={c.public_id}
                                 index={idx}
                                 alt={`Resident photo ${idx + 1} for ${c.public_id}`}
-                                onRequestDetail={() =>
+                                onRequestDetail={(e) => {
+                                  lightboxTriggerRef.current = e?.currentTarget as HTMLElement ?? null;
                                   setSpotlight({
                                     publicId: c.public_id,
                                     index: idx,
                                     label: `Photo ${idx + 1} — ${c.public_id}`,
-                                  })
-                                }
+                                  });
+                                }}
                               />
                             </li>
                           ))}
@@ -150,6 +163,7 @@ export function StaffPage() {
                     <td>
                       {staffMenuItems.length > 0 ? (
                         <RowActionMenu
+                          compact
                           ariaLabel={`Actions for complaint ${c.public_id}`}
                           items={staffMenuItems}
                         />
@@ -163,7 +177,7 @@ export function StaffPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
       {spotlight && (
         <div
@@ -174,12 +188,13 @@ export function StaffPage() {
           onClick={() => setSpotlight(null)}
         >
           <button
+            ref={lightboxCloseRef}
             type="button"
             className="lightbox-close btn btn-ghost btn-sm"
             onClick={() => setSpotlight(null)}
             aria-label="Close enlarged image"
           >
-            Close
+            <span className="mi" aria-hidden="true">close</span> Close
           </button>
           <div
             className="lightbox-frame"

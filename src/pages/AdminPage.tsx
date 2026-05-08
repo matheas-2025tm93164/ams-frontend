@@ -219,10 +219,10 @@ export function AdminPage() {
                   <td>
                     <button
                       type="button"
-                      className="btn btn-sm btn-danger"
+                      className="btn btn-danger btn-table-action"
                       onClick={() => setDeleteTarget(c.public_id)}
                     >
-                      Delete
+                      <span className="mi mi-sm" aria-hidden="true">delete</span> Delete
                     </button>
                   </td>
                 </tr>

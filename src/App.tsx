@@ -8,6 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ManageResidentsPage } from "./pages/ManageResidentsPage";
 import { ManageStaffPage } from "./pages/ManageStaffPage";
 import { ResidentPage } from "./pages/ResidentPage";
+import { ReviewsPage } from "./pages/ReviewsPage";
 import { StaffPage } from "./pages/StaffPage";
 
 export default function App() {
@@ -55,6 +56,14 @@ export default function App() {
               element={
                 <RequireRole role="maintenance_staff">
                   <StaffPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/reviews"
+              element={
+                <RequireRole role={["admin", "maintenance_staff"]}>
+                  <ReviewsPage />
                 </RequireRole>
               }
             />

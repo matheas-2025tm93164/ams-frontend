@@ -7,11 +7,12 @@ export function RequireRole({
   role,
   children,
 }: {
-  role: Role;
+  role: Role | Role[];
   children: ReactNode;
 }) {
   const { user } = useAuth();
-  if (!user || user.role !== role) {
+  const allowed = Array.isArray(role) ? role : [role];
+  if (!user || !allowed.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
   return children;

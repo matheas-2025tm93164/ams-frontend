@@ -2,6 +2,7 @@ import type {
   AdminUserRow,
   AnalyticsSummary,
   Complaint,
+  Review,
   TokenResponse,
   User,
 } from "./types";
@@ -120,6 +121,25 @@ export async function onboardStaffUser(body: {
   });
 }
 
+export async function patchAdminStaffUser(
+  userId: string,
+  body: {
+    full_name: string;
+    address: string;
+    phone: string;
+    aadhar?: string;
+    password?: string;
+  },
+): Promise<User> {
+  return apiJson<User>(
+    `/auth/admin/staff/${encodeURIComponent(userId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
 export async function onboardResidentUser(body: {
   email: string;
   password: string;
@@ -134,9 +154,35 @@ export async function onboardResidentUser(body: {
   });
 }
 
+export async function patchAdminResidentUser(
+  userId: string,
+  body: {
+    full_name: string;
+    phone: string;
+    family_members: string[];
+    aadhar?: string;
+    password?: string;
+  },
+): Promise<User> {
+  return apiJson<User>(
+    `/auth/admin/residents/${encodeURIComponent(userId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
 export async function deactivateUserAccount(userId: string): Promise<void> {
   await apiJson<void>(
     `/auth/admin/users/${encodeURIComponent(userId)}/deactivate`,
+    { method: "POST" },
+  );
+}
+
+export async function activateUserAccount(userId: string): Promise<void> {
+  await apiJson<void>(
+    `/auth/admin/users/${encodeURIComponent(userId)}/activate`,
     { method: "POST" },
   );
 }
@@ -188,6 +234,16 @@ export async function deleteComplaint(publicId: string): Promise<void> {
   if (!r.ok) {
     throw await parseError(r);
   }
+}
+
+export async function fetchReviews(
+  q: { rating?: string; staff_id?: string } = {},
+): Promise<Review[]> {
+  const params = new URLSearchParams();
+  if (q.rating) params.set("rating", q.rating);
+  if (q.staff_id) params.set("staff_id", q.staff_id);
+  const s = params.toString();
+  return apiJson<Review[]>(`/reviews${s ? `?${s}` : ""}`);
 }
 
 export async function fetchAnalytics(): Promise<AnalyticsSummary> {

@@ -7,6 +7,7 @@ import {
   uploadAttachment,
 } from "../api/client";
 import type { Complaint } from "../api/types";
+import { AccessibleDialog } from "../components/AccessibleDialog";
 import { DeleteComplaintConfirmModal } from "../components/DeleteComplaintConfirmModal";
 import { RowActionMenu } from "../components/RowActionMenu";
 import { StarRatingInput } from "../components/StarRatingInput";
@@ -15,18 +16,20 @@ export function ResidentPage() {
   const formId = useId();
   const [rows, setRows] = useState<Complaint[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [category, setCategory] = useState("plumbing");
-  const [priority, setPriority] = useState("medium");
-  const [description, setDescription] = useState("");
   const [completeFor, setCompleteFor] = useState<string | null>(null);
-  const [editFor, setEditFor] = useState<Complaint | null>(null);
-  const [editCategory, setEditCategory] = useState("plumbing");
-  const [editPriority, setEditPriority] = useState("medium");
-  const [editDescription, setEditDescription] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [rating, setRating] = useState(5);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const [editFor, setEditFor] = useState<Complaint | null>(null);
+  const [isNewMode, setIsNewMode] = useState(false);
+  const [modalCategory, setModalCategory] = useState("plumbing");
+  const [modalPriority, setModalPriority] = useState("medium");
+  const [modalDescription, setModalDescription] = useState("");
+
+  const [feedback, setFeedback] = useState("");
+  const [rating, setRating] = useState(5);
+
+  const modalOpen = isNewMode || editFor !== null;
 
   async function load() {
     setErr(null);
@@ -49,23 +52,50 @@ export function ResidentPage() {
     }
   }, [completeFor]);
 
-  useEffect(() => {
-    if (editFor) {
-      setEditCategory(editFor.category);
-      setEditPriority(editFor.priority);
-      setEditDescription(editFor.description);
-    }
-  }, [editFor]);
+  function openNewComplaint() {
+    setErr(null);
+    setEditFor(null);
+    setIsNewMode(true);
+    setModalCategory("plumbing");
+    setModalPriority("medium");
+    setModalDescription("");
+  }
 
-  async function onCreate(e: FormEvent) {
+  function openEditComplaint(c: Complaint) {
+    setErr(null);
+    setIsNewMode(false);
+    setEditFor(c);
+    setModalCategory(c.category);
+    setModalPriority(c.priority);
+    setModalDescription(c.description);
+  }
+
+  function closeModal() {
+    setEditFor(null);
+    setIsNewMode(false);
+  }
+
+  async function onModalSubmit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
     try {
-      await createComplaint({ category, priority, description });
-      setDescription("");
+      if (isNewMode) {
+        await createComplaint({
+          category: modalCategory,
+          priority: modalPriority,
+          description: modalDescription,
+        });
+      } else if (editFor) {
+        await patchComplaint(editFor.public_id, {
+          category: modalCategory,
+          priority: modalPriority,
+          description: modalDescription,
+        });
+      }
+      closeModal();
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Create failed");
+      setErr(e instanceof Error ? e.message : "Save failed");
     }
   }
 
@@ -113,22 +143,13 @@ export function ResidentPage() {
     }
   }
 
-  async function onEditSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!editFor) return;
-    setErr(null);
-    try {
-      await patchComplaint(editFor.public_id, {
-        category: editCategory,
-        priority: editPriority,
-        description: editDescription,
-      });
-      setEditFor(null);
-      await load();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Update failed");
-    }
-  }
+  const modalTitle = isNewMode
+    ? "New complaint"
+    : `Edit ${editFor?.public_id ?? ""}`;
+  const modalHint = isNewMode
+    ? "Submit a new maintenance request."
+    : "You can update details while this request is still pending.";
+  const submitLabel = isNewMode ? "Submit complaint" : "Save changes";
 
   return (
     <div className="page stack-lg">
@@ -145,59 +166,19 @@ export function ResidentPage() {
         </div>
       )}
 
-      <section className="card" aria-labelledby={`${formId}-new`}>
-        <h2 id={`${formId}-new`} className="card-title">
-          New complaint
-        </h2>
-        <form onSubmit={onCreate} className="grid-form">
-          <div className="field">
-            <label htmlFor={`${formId}-cat`}>Category</label>
-            <select
-              id={`${formId}-cat`}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="plumbing">Plumbing</option>
-              <option value="electrical">Electrical</option>
-              <option value="cleaning">Cleaning</option>
-              <option value="appliance">Appliance</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor={`${formId}-pri`}>Priority</label>
-            <select
-              id={`${formId}-pri`}
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-          <div className="field full">
-            <label htmlFor={`${formId}-desc`}>Description</label>
-            <textarea
-              id={`${formId}-desc`}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              rows={4}
-            />
-          </div>
-          <div className="field full">
-            <button type="submit" className="btn btn-primary">
-              Submit complaint
-            </button>
-          </div>
-        </form>
-      </section>
-
       <section className="card" aria-labelledby={`${formId}-list`}>
-        <h2 id={`${formId}-list`} className="card-title">
-          Submitted complaints
-        </h2>
+        <div className="card-head">
+          <h2 id={`${formId}-list`} className="card-title">
+            My complaints
+          </h2>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={openNewComplaint}
+          >
+            <span className="mi" aria-hidden="true">add</span> Add complaint
+          </button>
+        </div>
         <div
           className="table-scroll"
           role="region"
@@ -230,7 +211,16 @@ export function ResidentPage() {
                   <td>{c.priority}</td>
                   <td>
                     <time dateTime={c.updated_at}>
-                      {new Date(c.updated_at).toLocaleString()}
+                      {new Date(c.updated_at).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}{", "}
+                      {new Date(c.updated_at).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
                     </time>
                   </td>
                   <td>
@@ -257,21 +247,25 @@ export function ResidentPage() {
                               }
                             }}
                           />
-                          <label
-                            htmlFor={`${formId}-file-${c.public_id}`}
-                            className="btn btn-sm btn-primary"
-                          >
-                            Attach image
-                          </label>
                           <RowActionMenu
-                            ariaLabel={`Edit or delete complaint ${c.public_id}`}
+                            compact
+                            ariaLabel={`Actions for complaint ${c.public_id}`}
                             items={[
                               {
+                                label: "Attach image",
+                                icon: "attach_file",
+                                onSelect: () => {
+                                  document.getElementById(`${formId}-file-${c.public_id}`)?.click();
+                                },
+                              },
+                              {
                                 label: "Edit",
-                                onSelect: () => setEditFor(c),
+                                icon: "edit",
+                                onSelect: () => openEditComplaint(c),
                               },
                               {
                                 label: "Delete",
+                                icon: "delete",
                                 onSelect: () => setDeleteTarget(c.public_id),
                               },
                             ]}
@@ -280,16 +274,19 @@ export function ResidentPage() {
                       )}
                       {c.status === "resolved" && (
                         <RowActionMenu
+                          compact
                           ariaLabel={`Actions for complaint ${c.public_id}`}
                           items={[
                             {
                               label: "Mark completed",
+                              icon: "check_circle",
                               onSelect: () => {
                                 setCompleteFor(c.public_id);
                               },
                             },
                             {
                               label: "Reopen",
+                              icon: "refresh",
                               onSelect: () => onReopen(c.public_id),
                             },
                           ]}
@@ -304,113 +301,102 @@ export function ResidentPage() {
         </div>
       </section>
 
-      {editFor && (
-        <div
-          className="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={`${formId}-edit-title`}
-        >
-          <div className="modal-inner">
-            <h3 id={`${formId}-edit-title`}>Edit {editFor.public_id}</h3>
-            <p className="modal-hint">
-              You can update details while this request is still pending.
-            </p>
-            <form onSubmit={onEditSubmit} className="stack-form">
-              <div className="field">
-                <label htmlFor={`${formId}-ecat`}>Category</label>
-                <select
-                  id={`${formId}-ecat`}
-                  value={editCategory}
-                  onChange={(e) => setEditCategory(e.target.value)}
-                >
-                  <option value="plumbing">Plumbing</option>
-                  <option value="electrical">Electrical</option>
-                  <option value="cleaning">Cleaning</option>
-                  <option value="appliance">Appliance</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor={`${formId}-epri`}>Priority</label>
-                <select
-                  id={`${formId}-epri`}
-                  value={editPriority}
-                  onChange={(e) => setEditPriority(e.target.value)}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor={`${formId}-edesc`}>Description</label>
-                <textarea
-                  id={`${formId}-edesc`}
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  required
-                  rows={4}
-                />
-              </div>
-              <div className="actions">
-                <button type="submit" className="btn btn-primary">
-                  Save changes
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setEditFor(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+      <AccessibleDialog
+        open={modalOpen}
+        onClose={closeModal}
+        labelledBy={`${formId}-modal-title`}
+        describedBy={`${formId}-modal-hint`}
+      >
+        <h3 id={`${formId}-modal-title`}>{modalTitle}</h3>
+        <p id={`${formId}-modal-hint`} className="modal-hint">{modalHint}</p>
+        <form onSubmit={onModalSubmit} className="stack-form">
+          <div className="field">
+            <label htmlFor={`${formId}-mcat`}>Category</label>
+            <select
+              id={`${formId}-mcat`}
+              value={modalCategory}
+              onChange={(e) => setModalCategory(e.target.value)}
+            >
+              <option value="plumbing">Plumbing</option>
+              <option value="electrical">Electrical</option>
+              <option value="cleaning">Cleaning</option>
+              <option value="appliance">Appliance</option>
+              <option value="other">Other</option>
+            </select>
           </div>
-        </div>
-      )}
+          <div className="field">
+            <label htmlFor={`${formId}-mpri`}>Priority</label>
+            <select
+              id={`${formId}-mpri`}
+              value={modalPriority}
+              onChange={(e) => setModalPriority(e.target.value)}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor={`${formId}-mdesc`}>Description</label>
+            <textarea
+              id={`${formId}-mdesc`}
+              value={modalDescription}
+              onChange={(e) => setModalDescription(e.target.value)}
+              required
+              rows={4}
+            />
+          </div>
+          <div className="actions">
+            <button type="submit" className="btn btn-primary">
+              <span className="mi" aria-hidden="true">{isNewMode ? "send" : "save"}</span> {submitLabel}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={closeModal}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </AccessibleDialog>
 
-      {completeFor && (
-        <div
-          className="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={`${formId}-dlg-title`}
-        >
-          <div className="modal-inner">
-            <h3 id={`${formId}-dlg-title`}>Complete {completeFor}</h3>
-            <form onSubmit={onComplete} className="stack-form">
-              <div className="field">
-                <label htmlFor={`${formId}-fb`}>Feedback</label>
-                <textarea
-                  id={`${formId}-fb`}
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              <StarRatingInput
-                id={`${formId}-rate`}
-                label="Rating"
-                value={rating}
-                onChange={setRating}
-              />
-              <div className="actions">
-                <button type="submit" className="btn btn-primary">
-                  Submit
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setCompleteFor(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+      <AccessibleDialog
+        open={!!completeFor}
+        onClose={() => setCompleteFor(null)}
+        labelledBy={`${formId}-dlg-title`}
+      >
+        <h3 id={`${formId}-dlg-title`}>Complete {completeFor}</h3>
+        <form onSubmit={onComplete} className="stack-form">
+          <div className="field">
+            <label htmlFor={`${formId}-fb`}>Feedback</label>
+            <textarea
+              id={`${formId}-fb`}
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              rows={3}
+            />
           </div>
-        </div>
-      )}
+          <StarRatingInput
+            id={`${formId}-rate`}
+            label="Rating"
+            value={rating}
+            onChange={setRating}
+          />
+          <div className="actions">
+            <button type="submit" className="btn btn-primary">
+              <span className="mi" aria-hidden="true">check_circle</span> Submit
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setCompleteFor(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </AccessibleDialog>
 
       <DeleteComplaintConfirmModal
         publicId={deleteTarget}

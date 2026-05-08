@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { getApiBase, getToken } from "../api/client";
 
@@ -8,7 +9,7 @@ interface Props {
   /** Thumbnail in table vs large view in lightbox */
   size?: "thumb" | "spotlight";
   /** When set, thumbnail is wrapped in a button that calls this (e.g. open lightbox) */
-  onRequestDetail?: () => void;
+  onRequestDetail?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function AuthenticatedImage({
@@ -68,10 +69,11 @@ export function AuthenticatedImage({
   }
 
   const isSpotlight = size === "spotlight";
+  const imgAlt = onRequestDetail ? "" : alt;
   const img = (
     <img
       src={src}
-      alt={alt}
+      alt={isSpotlight ? alt : imgAlt}
       className={isSpotlight ? "spotlight-image" : "thumb"}
       {...(isSpotlight
         ? {}
@@ -88,7 +90,7 @@ export function AuthenticatedImage({
       <button
         type="button"
         className="thumb-trigger"
-        onClick={onRequestDetail}
+        onClick={(e) => onRequestDetail(e)}
         aria-label={`View larger: ${alt}`}
       >
         {img}

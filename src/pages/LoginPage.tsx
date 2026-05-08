@@ -21,7 +21,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-shell">
+    <main className="auth-shell" aria-label="Sign in">
       <div className="auth-card">
         <h1>Sign in</h1>
         <form className="auth-form" onSubmit={onSubmit} noValidate>
@@ -47,14 +47,16 @@ export function LoginPage() {
               required
             />
           </div>
-          {err ? (
-            <p className="error auth-error" role="alert">
-              {err}
-            </p>
-          ) : null}
+          <div aria-live="assertive" aria-atomic="true">
+            {err ? (
+              <p className="error auth-error" role="alert">
+                {err}
+              </p>
+            ) : null}
+          </div>
           <div className="auth-submit-wrap">
             <button type="submit" className="btn btn-primary">
-              Sign in
+              <span className="mi" aria-hidden="true">login</span> Sign in
             </button>
           </div>
         </form>
@@ -62,6 +64,6 @@ export function LoginPage() {
           New residents and staff are onboarded by a building administrator.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

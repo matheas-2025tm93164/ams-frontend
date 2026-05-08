@@ -61,6 +61,16 @@ export interface Complaint {
   rating: number | null;
 }
 
+export interface Review {
+  public_id: string;
+  resident_name: string | null;
+  assigned_staff_id: string | null;
+  assigned_staff_name: string | null;
+  resident_feedback: string | null;
+  rating: number;
+  completed_at: string;
+}
+
 export interface AnalyticsSummary {
   by_category: { category: string; count: number }[];
 }
